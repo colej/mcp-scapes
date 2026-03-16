@@ -14,3 +14,9 @@ class Router:
         embedding = get_embedder().embed(query)
         servers = self._registry.list_all()
         return self._map.nearest_servers(embedding, servers, top_k)
+
+    def soft_route(self, query: str, temperature: float = 0.5) -> dict[str, float]:
+        """Embed query and return softmax weight distribution over all servers."""
+        embedding = get_embedder().embed(query)
+        servers = self._registry.list_all()
+        return self._map.soft_weights(embedding, servers, temperature)
