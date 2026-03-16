@@ -20,3 +20,9 @@ class MemoryNode(BaseModel):
     tags: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class RouteResult(BaseModel):
+    server_id: str
+    score: float
+    connection_info: dict
