@@ -46,3 +46,34 @@ class TopographicMap:
             )
         scored.sort(key=lambda r: r.score, reverse=True)
         return scored[:top_k]
+
+    def soft_weights(
+        self,
+        query_embedding: list[float],
+        servers: list[ServerRegistration],
+        temperature: float = 0.5,
+    ) -> dict[str, float]:
+        """Softmax over cosine similarities with temperature scaling.
+
+        Low temperature → near-hard routing (winner-takes-most).
+        High temperature → diffuse activation across all servers.
+        """
+        if not servers:
+            return {}
+        q = np.array(query_embedding, dtype=np.float32)
+        similarities = []
+        ids = []
+        for srv in servers:
+            if srv.centroid is None:
+                sim = 0.0
+            else:
+                c = np.array(srv.centroid, dtype=np.float32)
+                denom = np.linalg.norm(q) * np.linalg.norm(c)
+                sim = float(np.dot(q, c) / denom) if denom else 0.0
+            similarities.append(sim / temperature)
+            ids.append(srv.id)
+        sims = np.array(similarities, dtype=np.float64)
+        sims -= sims.max()  # numerical stability
+        exp_sims = np.exp(sims)
+        weights = exp_sims / exp_sims.sum()
+        return {id_: float(w) for id_, w in zip(ids, weights)}
