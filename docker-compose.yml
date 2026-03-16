@@ -37,6 +37,26 @@ services:
       meta:
         condition: service_healthy
 
+  child-research:
+    build: .
+    command: topomcp-child
+    ports:
+      - "8002:8002"
+    environment:
+      CHILD_ID: research
+      CHILD_NAME: Research
+      CHILD_DESCRIPTION: Academic research, papers, and scientific knowledge
+      CHILD_PORT: "8002"
+      CHILD_DB_PATH: /app/data/research.db
+      META_URL: http://meta:8000
+    volumes:
+      - ./data/research:/app/data
+    networks:
+      - mcpscapes-network
+    depends_on:
+      meta:
+        condition: service_healthy
+
   child-code:
     build: .
     command: topomcp-child
@@ -57,22 +77,6 @@ services:
       meta:
         condition: service_healthy
 
-  child-research:
-    build: .
-    command: topomcp-child
-    ports:
-      - "8002:8002"
-    environment:
-      CHILD_ID: research
-      CHILD_NAME: Research
-      CHILD_DESCRIPTION: Academic research, papers, and scientific knowledge
-      CHILD_PORT: "8002"
-      CHILD_DB_PATH: /app/data/research.db
-      META_URL: http://meta:8000
-    volumes:
-      - ./data/research:/app/data
-    networks:
-      - mcpscapes-network
-    depends_on:
-      meta:
-        condition: service_healthy
+networks:
+  mcpscapes-network:
+    driver: bridge
