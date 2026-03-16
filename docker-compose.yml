@@ -1,0 +1,82 @@
+services:
+  meta:
+    build: .
+    command: topomcp-meta
+    ports:
+      - "8000:8000"
+    environment:
+      META_PORT: "8000"
+      META_DB_PATH: /app/data/meta.db
+    volumes:
+      - ./data/meta:/app/data
+    networks:
+      - mcpscapes-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/internal/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  child-energy:
+    build: .
+    command: topomcp-child
+    ports:
+      - "8001:8001"
+    environment:
+      CHILD_ID: energy
+      CHILD_NAME: Energy Markets
+      CHILD_DESCRIPTION: Knowledge about energy markets, commodities, and pricing
+      CHILD_PORT: "8001"
+      CHILD_DB_PATH: /app/data/energy.db
+      META_URL: http://meta:8000
+    volumes:
+      - ./data/energy:/app/data
+    networks:
+      - mcpscapes-network
+    depends_on:
+      meta:
+        condition: service_healthy
+
+  child-research:
+    build: .
+    command: topomcp-child
+    ports:
+      - "8002:8002"
+    environment:
+      CHILD_ID: research
+      CHILD_NAME: Research
+      CHILD_DESCRIPTION: Academic research, papers, and scientific knowledge
+      CHILD_PORT: "8002"
+      CHILD_DB_PATH: /app/data/research.db
+      META_URL: http://meta:8000
+    volumes:
+      - ./data/research:/app/data
+    networks:
+      - mcpscapes-network
+    depends_on:
+      meta:
+        condition: service_healthy
+
+  child-code:
+    build: .
+    command: topomcp-child
+    ports:
+      - "8003:8003"
+    environment:
+      CHILD_ID: code
+      CHILD_NAME: Code
+      CHILD_DESCRIPTION: Software engineering, programming languages, and developer tools
+      CHILD_PORT: "8003"
+      CHILD_DB_PATH: /app/data/code.db
+      META_URL: http://meta:8000
+    volumes:
+      - ./data/code:/app/data
+    networks:
+      - mcpscapes-network
+    depends_on:
+      meta:
+        condition: service_healthy
+
+networks:
+  mcpscapes-network:
+    driver: bridge
