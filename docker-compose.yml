@@ -1,0 +1,18 @@
+services:
+  meta:
+    build: .
+    command: topomcp-meta
+    ports:
+      - "8000:8000"
+    environment:
+      META_PORT: "8000"
+      META_DB_PATH: /app/data/meta.db
+    volumes:
+      - ./data/meta:/app/data
+    networks:
+      - mcpscapes-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/internal/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
