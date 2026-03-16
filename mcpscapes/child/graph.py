@@ -84,3 +84,16 @@ class KnowledgeGraph:
         if row is None:
             return None
         return self._row_to_node(row)
+
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        relation: str,
+        weight: float = 1.0,
+    ) -> None:
+        self._conn.execute(
+            "INSERT OR REPLACE INTO edges (source_id, target_id, relation, weight) VALUES (?, ?, ?, ?)",
+            (source_id, target_id, relation, weight),
+        )
+        self._conn.commit()
