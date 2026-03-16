@@ -26,3 +26,9 @@ class RouteResult(BaseModel):
     server_id: str
     score: float
     connection_info: dict
+
+
+class MapEdge(BaseModel):
+    source: str
+    target: str
+    distance: float
