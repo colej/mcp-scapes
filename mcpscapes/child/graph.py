@@ -75,3 +75,12 @@ class KnowledgeGraph:
         )
         self._conn.commit()
         return node
+
+    def get_node(self, id: str) -> MemoryNode | None:
+        row = self._conn.execute(
+            "SELECT id, content, domain_weights, embedding, tags, created_at, updated_at FROM nodes WHERE id = ?",
+            (id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return self._row_to_node(row)
