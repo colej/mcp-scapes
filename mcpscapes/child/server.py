@@ -21,3 +21,31 @@ def get_graph() -> KnowledgeGraph:
     if _graph is None:
         _graph = KnowledgeGraph(CHILD_DB_PATH)
     return _graph
+
+
+@mcp.tool()
+async def add_memory(
+    content: str,
+    tags: list[str],
+    domain_weights: dict[str, float] | None = None,
+) -> dict:
+    """Add a memory node to the local knowledge graph."""
+    import asyncio
+    import httpx
+
+    weights = domain_weights if domain_weights is not None else {CHILD_ID: 1.0}
+    node = get_graph().add_node(content, tags, weights)
+
+    if META_URL:
+        async def _notify():
+            async with httpx.AsyncClient() as client:
+                try:
+                    await client.post(
+                        f"{META_URL}/internal/refresh_centroid/{CHILD_ID}",
+                        timeout=5.0,
+                    )
+                except Exception:
+                    pass
+        asyncio.create_task(_notify())
+
+    return node.model_dump(mode="json")
