@@ -22,3 +22,13 @@ class Embedder:
 
     def cosine_distance(self, a: list[float], b: list[float]) -> float:
         return 1.0 - self.cosine_similarity(a, b)
+
+
+_instance: Embedder | None = None
+
+
+def get_embedder() -> Embedder:
+    global _instance
+    if _instance is None:
+        _instance = Embedder()
+    return _instance
