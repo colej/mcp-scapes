@@ -56,3 +56,73 @@ async def soft_route_query(query: str, temperature: float = 0.5) -> dict:
 async def domain_map() -> list[dict]:
     """Return all pairwise inter-server distances as an edge list."""
     return [e.model_dump() for e in _topo_map.server_distances()]
+
+
+@mcp.tool()
+async def interpolate_domains(domain_a: str, domain_b: str, t: float = 0.5) -> list[dict]:
+    """Interpolate between two domain centroids and route the midpoint vector."""
+    servers = _registry.list_all()
+    point = _topo_map.interpolate(domain_a, domain_b, t, servers)
+    results = _topo_map.nearest_servers(point, servers, top_k=3)
+    return [r.model_dump() for r in results]
+
+
+@mcp.tool()
+async def search_across(
+    query: str,
+    top_k_servers: int = 2,
+    top_k_results: int = 5,
+) -> list[dict]:
+    """Fan out query to top N servers, merge and re-rank results."""
+    import httpx
+
+    top_servers = _router.route(query, top_k=top_k_servers)
+    all_results: list[dict] = []
+    async with httpx.AsyncClient() as client:
+        for srv_result in top_servers:
+            url = srv_result.connection_info["url"]
+            try:
+                resp = await client.post(
+                    f"{url}/mcp",
+                    json={
+                        "method": "tools/call",
+                        "params": {
+                            "name": "search_memory",
+                            "arguments": {"query": query, "k": top_k_results},
+                        },
+                    },
+                    timeout=10.0,
+                )
+                resp.raise_for_status()
+                items = resp.json().get("result", []) or []
+                for item in items:
+                    item["source_server"] = srv_result.server_id
+                    all_results.append(item)
+            except Exception:
+                pass
+    all_results.sort(key=lambda x: x.get("score", 0.0), reverse=True)
+    return all_results[:top_k_results]
+
+
+@mcp.tool()
+async def add_to_domain(domain_id: str, content: str, tags: list[str]) -> dict:
+    """Proxy add_memory to a specific child server."""
+    import httpx
+
+    srv = _registry.get(domain_id)
+    if srv is None:
+        raise ValueError(f"Unknown domain: {domain_id!r}")
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{srv.url}/mcp",
+            json={
+                "method": "tools/call",
+                "params": {
+                    "name": "add_memory",
+                    "arguments": {"content": content, "tags": tags},
+                },
+            },
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+        return resp.json().get("result", {})
