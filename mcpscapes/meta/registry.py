@@ -25,3 +25,23 @@ class Registry:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.execute(_CREATE_SERVERS)
         self._conn.commit()
+
+    def register(self, reg: ServerRegistration) -> None:
+        centroid_blob = (
+            np.array(reg.centroid, dtype=np.float32).tobytes()
+            if reg.centroid is not None
+            else None
+        )
+        self._conn.execute(
+            "INSERT OR REPLACE INTO servers (id, name, description, url, centroid, registered_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                reg.id,
+                reg.name,
+                reg.description,
+                reg.url,
+                centroid_blob,
+                reg.registered_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
