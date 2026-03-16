@@ -26,6 +26,35 @@ class Registry:
         self._conn.execute(_CREATE_SERVERS)
         self._conn.commit()
 
+    def _row_to_reg(self, row: tuple) -> ServerRegistration:
+        id_, name, desc, url, centroid_blob, registered_at = row
+        centroid = (
+            np.frombuffer(centroid_blob, dtype=np.float32).tolist()
+            if centroid_blob is not None
+            else None
+        )
+        return ServerRegistration(
+            id=id_,
+            name=name,
+            description=desc,
+            url=url,
+            centroid=centroid,
+            registered_at=datetime.fromisoformat(registered_at),
+        )
+
+    def get(self, id: str) -> ServerRegistration | None:
+        row = self._conn.execute(
+            "SELECT id, name, description, url, centroid, registered_at FROM servers WHERE id = ?",
+            (id,),
+        ).fetchone()
+        return self._row_to_reg(row) if row else None
+
+    def list_all(self) -> list[ServerRegistration]:
+        rows = self._conn.execute(
+            "SELECT id, name, description, url, centroid, registered_at FROM servers"
+        ).fetchall()
+        return [self._row_to_reg(r) for r in rows]
+
     def register(self, reg: ServerRegistration) -> None:
         centroid_blob = (
             np.array(reg.centroid, dtype=np.float32).tobytes()
