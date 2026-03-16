@@ -77,3 +77,15 @@ class TopographicMap:
         exp_sims = np.exp(sims)
         weights = exp_sims / exp_sims.sum()
         return {id_: float(w) for id_, w in zip(ids, weights)}
+
+    def server_distances(self) -> list[MapEdge]:
+        """All pairwise edges sorted by ascending distance."""
+        seen: set[frozenset[str]] = set()
+        edges: list[MapEdge] = []
+        for (src, tgt), dist in self._distances.items():
+            key = frozenset([src, tgt])
+            if key not in seen:
+                seen.add(key)
+                edges.append(MapEdge(source=src, target=tgt, distance=dist))
+        edges.sort(key=lambda e: e.distance)
+        return edges
