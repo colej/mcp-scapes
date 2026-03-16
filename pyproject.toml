@@ -28,3 +28,6 @@ dev = [
 [project.scripts]
 topomcp-meta = "mcpscapes.meta.server:run"
 topomcp-child = "mcpscapes.child.server:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcpscapes"]
