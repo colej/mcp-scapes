@@ -78,3 +78,40 @@ async def add_relation(
     """Add a directed edge between two memory nodes."""
     get_graph().add_edge(source_id, target_id, relation, weight)
     return {"source_id": source_id, "target_id": target_id, "relation": relation, "weight": weight}
+
+
+@mcp.tool()
+async def describe() -> dict:
+    """Return server identity, centroid, node count, and top tags."""
+    graph = get_graph()
+    centroid = graph.compute_centroid()
+    row = graph._conn.execute("SELECT COUNT(*) FROM nodes").fetchone()
+    node_count = row[0] if row else 0
+    tag_rows = graph._conn.execute("SELECT tags FROM nodes").fetchall()
+    import json
+    tag_freq: dict[str, int] = {}
+    for (tags_json,) in tag_rows:
+        for tag in json.loads(tags_json):
+            tag_freq[tag] = tag_freq.get(tag, 0) + 1
+    top_tags = sorted(tag_freq, key=lambda t: tag_freq[t], reverse=True)[:10]
+    return {
+        "id": CHILD_ID,
+        "name": CHILD_NAME,
+        "description": CHILD_DESCRIPTION,
+        "centroid": centroid,
+        "node_count": node_count,
+        "top_tags": top_tags,
+    }
+
+
+@mcp.tool()
+async def list_memories(limit: int = 20, offset: int = 0) -> list[dict]:
+    """Paginated listing of all memory nodes."""
+    import json
+    graph = get_graph()
+    rows = graph._conn.execute(
+        "SELECT id, content, domain_weights, embedding, tags, created_at, updated_at "
+        "FROM nodes LIMIT ? OFFSET ?",
+        (limit, offset),
+    ).fetchall()
+    return [graph._row_to_node(row).model_dump(mode="json") for row in rows]
