@@ -49,3 +49,13 @@ async def add_memory(
         asyncio.create_task(_notify())
 
     return node.model_dump(mode="json")
+
+
+@mcp.tool()
+async def search_memory(query: str, k: int = 5) -> list[dict]:
+    """Search the local knowledge graph by semantic similarity."""
+    results = get_graph().search(query, k)
+    return [
+        {**node.model_dump(mode="json"), "score": score}
+        for node, score in results
+    ]
