@@ -37,3 +37,22 @@ async def list_domains() -> list[dict]:
             "nearest_neighbours": nb_info,
         })
     return result
+
+
+@mcp.tool()
+async def route_query(query: str, top_k: int = 3, temperature: float = 0.5) -> list[dict]:
+    """Route a query to the nearest servers and return connection info."""
+    results = _router.route(query, top_k, temperature)
+    return [r.model_dump() for r in results]
+
+
+@mcp.tool()
+async def soft_route_query(query: str, temperature: float = 0.5) -> dict:
+    """Return softmax weight distribution over all domains for a query."""
+    return _router.soft_route(query, temperature)
+
+
+@mcp.tool()
+async def domain_map() -> list[dict]:
+    """Return all pairwise inter-server distances as an edge list."""
+    return [e.model_dump() for e in _topo_map.server_distances()]
