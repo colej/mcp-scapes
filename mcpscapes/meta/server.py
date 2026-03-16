@@ -1,7 +1,9 @@
 import os
 
 import uvicorn
+from fastapi import FastAPI, HTTPException
 from fastmcp import FastMCP
+from pydantic import BaseModel as PydanticBase
 
 from mcpscapes.meta.map import TopographicMap
 from mcpscapes.meta.registry import Registry
@@ -167,3 +169,51 @@ async def add_with_soft_routing(
             except Exception:
                 pass
     return {"written_to": written, "domain_weights": weights}
+
+
+# --- Internal HTTP endpoints ---
+
+_internal = FastAPI()
+
+
+@_internal.post("/internal/register")
+async def internal_register(reg: "ServerRegistrationBody"):
+    from mcpscapes.shared.models import ServerRegistration
+    server_reg = ServerRegistration(**reg.model_dump())
+    _registry.register(server_reg)
+    # Fire-and-forget centroid fetch
+    import asyncio
+    asyncio.create_task(_router.refresh_centroid(server_reg.id))
+    return {"status": "registered", "id": server_reg.id}
+
+
+@_internal.post("/internal/refresh_centroid/{server_id}")
+async def internal_refresh_centroid(server_id: str):
+    import asyncio
+    asyncio.create_task(_router.refresh_centroid(server_id))
+    return {"status": "refreshing", "server_id": server_id}
+
+
+@_internal.get("/internal/health")
+async def internal_health():
+    return {"status": "ok", "server_count": len(_registry.list_all())}
+
+
+class ServerRegistrationBody(PydanticBase):
+    id: str
+    name: str
+    description: str
+    url: str
+    centroid: list[float] | None = None
+    registered_at: str | None = None
+
+
+def run(preload: bool = False) -> None:
+    if preload:
+        from mcpscapes.shared.embedder import get_embedder
+        get_embedder().embed("warmup")
+
+    from starlette.routing import Mount
+    mcp_app = mcp.get_asgi_app()
+    _internal.mount("/mcp", mcp_app)
+    uvicorn.run(_internal, host="0.0.0.0", port=META_PORT)
