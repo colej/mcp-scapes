@@ -16,3 +16,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  child-energy:
+    build: .
+    command: topomcp-child
+    ports:
+      - "8001:8001"
+    environment:
+      CHILD_ID: energy
+      CHILD_NAME: Energy Markets
+      CHILD_DESCRIPTION: Knowledge about energy markets, commodities, and pricing
+      CHILD_PORT: "8001"
+      CHILD_DB_PATH: /app/data/energy.db
+      META_URL: http://meta:8000
+    volumes:
+      - ./data/energy:/app/data
+    networks:
+      - mcpscapes-network
+    depends_on:
+      meta:
+        condition: service_healthy
