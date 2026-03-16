@@ -115,3 +115,21 @@ class KnowledgeGraph:
             scored.append((node, score))
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored[:k]
+
+    def get_all_embeddings(self) -> tuple[list[str], np.ndarray]:
+        rows = self._conn.execute(
+            "SELECT id, embedding FROM nodes WHERE embedding IS NOT NULL"
+        ).fetchall()
+        if not rows:
+            return [], np.empty((0,), dtype=np.float32)
+        ids = [r[0] for r in rows]
+        matrix = np.stack(
+            [np.frombuffer(r[1], dtype=np.float32) for r in rows]
+        )
+        return ids, matrix
+
+    def compute_centroid(self) -> list[float]:
+        ids, matrix = self.get_all_embeddings()
+        if len(ids) == 0:
+            return [0.0] * 384  # MiniLM dimension
+        return matrix.mean(axis=0).tolist()
