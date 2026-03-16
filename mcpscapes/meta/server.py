@@ -126,3 +126,44 @@ async def add_to_domain(domain_id: str, content: str, tags: list[str]) -> dict:
         )
         resp.raise_for_status()
         return resp.json().get("result", {})
+
+
+@mcp.tool()
+async def add_with_soft_routing(
+    content: str,
+    tags: list[str],
+    temperature: float = 0.3,
+    threshold: float = 0.15,
+) -> dict:
+    """Embed content, compute soft weights, write to all servers above threshold."""
+    import httpx
+
+    weights = _router.soft_route(content, temperature)
+    targets = {sid: w for sid, w in weights.items() if w >= threshold}
+    written: list[str] = []
+    async with httpx.AsyncClient() as client:
+        for server_id, weight in targets.items():
+            srv = _registry.get(server_id)
+            if srv is None:
+                continue
+            try:
+                resp = await client.post(
+                    f"{srv.url}/mcp",
+                    json={
+                        "method": "tools/call",
+                        "params": {
+                            "name": "add_memory",
+                            "arguments": {
+                                "content": content,
+                                "tags": tags,
+                                "domain_weights": {k: v for k, v in weights.items()},
+                            },
+                        },
+                    },
+                    timeout=15.0,
+                )
+                resp.raise_for_status()
+                written.append(server_id)
+            except Exception:
+                pass
+    return {"written_to": written, "domain_weights": weights}
