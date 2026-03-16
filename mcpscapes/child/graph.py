@@ -97,3 +97,21 @@ class KnowledgeGraph:
             (source_id, target_id, relation, weight),
         )
         self._conn.commit()
+
+    def search(self, query: str, k: int = 5) -> list[tuple["MemoryNode", float]]:
+        embedder = get_embedder()
+        q_vec = np.array(embedder.embed(query), dtype=np.float32)
+        rows = self._conn.execute(
+            "SELECT id, content, domain_weights, embedding, tags, created_at, updated_at FROM nodes WHERE embedding IS NOT NULL"
+        ).fetchall()
+        scored: list[tuple[MemoryNode, float]] = []
+        for row in rows:
+            node = self._row_to_node(row)
+            if node.embedding is None:
+                continue
+            n_vec = np.array(node.embedding, dtype=np.float32)
+            denom = np.linalg.norm(q_vec) * np.linalg.norm(n_vec)
+            score = float(np.dot(q_vec, n_vec) / denom) if denom else 0.0
+            scored.append((node, score))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:k]
