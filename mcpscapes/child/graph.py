@@ -41,3 +41,37 @@ class KnowledgeGraph:
         self._conn.execute(_CREATE_NODES)
         self._conn.execute(_CREATE_EDGES)
         self._conn.commit()
+
+    def add_node(
+        self,
+        content: str,
+        tags: list[str],
+        domain_weights: dict[str, float],
+    ) -> MemoryNode:
+        embedder = get_embedder()
+        embedding = embedder.embed(content)
+        now = datetime.utcnow().isoformat()
+        node = MemoryNode(
+            id=str(uuid.uuid4()),
+            content=content,
+            domain_weights=domain_weights,
+            embedding=embedding,
+            tags=tags,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        emb_blob = np.array(embedding, dtype=np.float32).tobytes()
+        self._conn.execute(
+            "INSERT INTO nodes VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                node.id,
+                node.content,
+                json.dumps(node.domain_weights),
+                emb_blob,
+                json.dumps(node.tags),
+                now,
+                now,
+            ),
+        )
+        self._conn.commit()
+        return node
