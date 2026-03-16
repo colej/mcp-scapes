@@ -89,3 +89,20 @@ class TopographicMap:
                 edges.append(MapEdge(source=src, target=tgt, distance=dist))
         edges.sort(key=lambda e: e.distance)
         return edges
+
+    def interpolate(
+        self,
+        server_id_a: str,
+        server_id_b: str,
+        t: float,
+        servers: list[ServerRegistration],
+    ) -> list[float]:
+        """Linear interpolation between two server centroids at parameter t in [0,1]."""
+        srv_map = {s.id: s for s in servers}
+        a = srv_map.get(server_id_a)
+        b = srv_map.get(server_id_b)
+        if a is None or a.centroid is None or b is None or b.centroid is None:
+            raise ValueError(f"Cannot interpolate: missing centroid for {server_id_a!r} or {server_id_b!r}")
+        va = np.array(a.centroid, dtype=np.float32)
+        vb = np.array(b.centroid, dtype=np.float32)
+        return ((1.0 - t) * va + t * vb).tolist()
