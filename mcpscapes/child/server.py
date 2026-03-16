@@ -1,5 +1,8 @@
+import asyncio
 import os
+from contextlib import asynccontextmanager
 
+import httpx
 import uvicorn
 from fastmcp import FastMCP
 
@@ -115,3 +118,37 @@ async def list_memories(limit: int = 20, offset: int = 0) -> list[dict]:
         (limit, offset),
     ).fetchall()
     return [graph._row_to_node(row).model_dump(mode="json") for row in rows]
+
+
+async def _register_with_meta() -> None:
+    if not META_URL:
+        return
+    from mcpscapes.shared.models import ServerRegistration
+    reg = ServerRegistration(
+        id=CHILD_ID,
+        name=CHILD_NAME,
+        description=CHILD_DESCRIPTION,
+        url=f"http://localhost:{CHILD_PORT}",
+    )
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(
+                f"{META_URL}/internal/register",
+                json=reg.model_dump(mode="json"),
+                timeout=10.0,
+            )
+        except Exception as exc:
+            from loguru import logger
+            logger.warning(f"Failed to register with meta-server: {exc}")
+
+
+def run(preload: bool = False) -> None:
+    if preload:
+        from mcpscapes.shared.embedder import get_embedder
+        get_embedder().embed("warmup")
+
+    async def _startup():
+        await _register_with_meta()
+
+    asyncio.run(_startup())
+    uvicorn.run(mcp.get_asgi_app(), host="0.0.0.0", port=CHILD_PORT)
