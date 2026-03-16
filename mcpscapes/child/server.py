@@ -59,3 +59,22 @@ async def search_memory(query: str, k: int = 5) -> list[dict]:
         {**node.model_dump(mode="json"), "score": score}
         for node, score in results
     ]
+
+
+@mcp.tool()
+async def get_memory(id: str) -> dict | None:
+    """Return a single memory node by id."""
+    node = get_graph().get_node(id)
+    return node.model_dump(mode="json") if node else None
+
+
+@mcp.tool()
+async def add_relation(
+    source_id: str,
+    target_id: str,
+    relation: str,
+    weight: float = 1.0,
+) -> dict:
+    """Add a directed edge between two memory nodes."""
+    get_graph().add_edge(source_id, target_id, relation, weight)
+    return {"source_id": source_id, "target_id": target_id, "relation": relation, "weight": weight}
