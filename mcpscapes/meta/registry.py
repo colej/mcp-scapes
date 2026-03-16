@@ -26,6 +26,17 @@ class Registry:
         self._conn.execute(_CREATE_SERVERS)
         self._conn.commit()
 
+    def update_centroid(self, id: str, centroid: list[float]) -> None:
+        blob = np.array(centroid, dtype=np.float32).tobytes()
+        self._conn.execute(
+            "UPDATE servers SET centroid = ? WHERE id = ?", (blob, id)
+        )
+        self._conn.commit()
+
+    def deregister(self, id: str) -> None:
+        self._conn.execute("DELETE FROM servers WHERE id = ?", (id,))
+        self._conn.commit()
+
     def _row_to_reg(self, row: tuple) -> ServerRegistration:
         id_, name, desc, url, centroid_blob, registered_at = row
         centroid = (
