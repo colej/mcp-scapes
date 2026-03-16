@@ -133,3 +133,33 @@ class KnowledgeGraph:
         if len(ids) == 0:
             return [0.0] * 384  # MiniLM dimension
         return matrix.mean(axis=0).tolist()
+
+    def describe(self) -> str:
+        row = self._conn.execute("SELECT COUNT(*) FROM nodes").fetchone()
+        node_count = row[0] if row else 0
+        tag_rows = self._conn.execute("SELECT tags FROM nodes").fetchall()
+        tag_freq: dict[str, int] = {}
+        for (tags_json,) in tag_rows:
+            for tag in json.loads(tags_json):
+                tag_freq[tag] = tag_freq.get(tag, 0) + 1
+        top_tags = sorted(tag_freq, key=lambda t: tag_freq[t], reverse=True)[:10]
+        return f"nodes={node_count} top_tags={top_tags}"
+
+    # --- helpers ---
+
+    def _row_to_node(self, row: tuple) -> MemoryNode:
+        id_, content, dw_json, emb_blob, tags_json, created_at, updated_at = row
+        embedding = (
+            np.frombuffer(emb_blob, dtype=np.float32).tolist()
+            if emb_blob is not None
+            else None
+        )
+        return MemoryNode(
+            id=id_,
+            content=content,
+            domain_weights=json.loads(dw_json),
+            embedding=embedding,
+            tags=json.loads(tags_json),
+            created_at=datetime.fromisoformat(created_at),
+            updated_at=datetime.fromisoformat(updated_at),
+        )
