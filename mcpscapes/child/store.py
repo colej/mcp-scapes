@@ -20,15 +20,45 @@ class VectorStore:
         sqlite_vec.load(self._conn)
         self._conn.enable_load_extension(False)
         self._dim = dim
+        # Integer rowid → string node_id mapping
         self._conn.execute(
-            f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_nodes USING vec0(embedding float[{dim}])"
+            "CREATE TABLE IF NOT EXISTS vec_id_map "
+            "(rowid INTEGER PRIMARY KEY AUTOINCREMENT, node_id TEXT NOT NULL UNIQUE)"
+        )
+        self._conn.execute(
+            f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_nodes "
+            f"USING vec0(embedding float[{dim}])"
         )
         self._conn.commit()
 
     def add(self, id: str, embedding: list[float]) -> None:
+        # Upsert id mapping
+        self._conn.execute(
+            "INSERT OR IGNORE INTO vec_id_map (node_id) VALUES (?)", (id,)
+        )
+        row = self._conn.execute(
+            "SELECT rowid FROM vec_id_map WHERE node_id = ?", (id,)
+        ).fetchone()
+        rowid = row[0]
         vec = np.array(embedding, dtype=np.float32).tobytes()
         self._conn.execute(
             "INSERT OR REPLACE INTO vec_nodes(rowid, embedding) VALUES (?, ?)",
-            (id, vec),
+            (rowid, vec),
         )
         self._conn.commit()
+
+    def search(self, query_embedding: list[float], k: int) -> list[tuple[str, float]]:
+        vec = np.array(query_embedding, dtype=np.float32).tobytes()
+        rows = self._conn.execute(
+            "SELECT rowid, distance FROM vec_nodes WHERE embedding MATCH ? ORDER BY distance LIMIT ?",
+            (vec, k),
+        ).fetchall()
+        results = []
+        for rowid, distance in rows:
+            id_row = self._conn.execute(
+                "SELECT node_id FROM vec_id_map WHERE rowid = ?", (rowid,)
+            ).fetchone()
+            if id_row:
+                score = 1.0 - float(distance)  # convert cosine distance → similarity
+                results.append((id_row[0], score))
+        return results
