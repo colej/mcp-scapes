@@ -1,11 +1,11 @@
 # mcp-scapes
 
 A semantically-routed, topographic MCP federation with soft/overlapping context assignment.
-Inspired by Rebecca Schwarzlose, *Brainscapes* (2021).
+Concept draws from the representation of maps and topography in neuroscience as discussed in the book Brainscapes (Schwarzlose, 2021)
 
 ## Concept
 
-Topographic routing applies the neuroscientific insight that the brain organises representations continuously in space: concepts with similar features sit near each other, and boundaries between regions are gradients rather than hard lines. mcp-scapes applies this principle to MCP servers — each child server is a domain region, proximity between servers is encoded in a live distance matrix, and every piece of knowledge is assigned soft membership weights across all regions rather than belonging exclusively to one.
+Topographic routing draws inspiration from how the brain organises representations continuously in space: concepts with similar features sit near each other, and boundaries between regions are gradients rather than hard lines. mcp-scapes applies this principle to MCP servers — each child server is a domain region, proximity between servers is encoded in a live distance matrix, and every piece of knowledge is assigned soft membership weights across all regions rather than belonging exclusively to one.
 
 Rather than hard-routing a query to exactly one server, mcp-scapes embeds the query and computes a softmax over all server centroids. Low temperature produces near-hard routing (the closest domain wins most of the weight); high temperature diffuses activation across many servers simultaneously. This mirrors how cortical maps blend at their boundaries, where neurons respond to multiple stimuli with graded tuning curves rather than binary membership.
 
