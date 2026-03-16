@@ -24,3 +24,11 @@ class VectorStore:
             f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_nodes USING vec0(embedding float[{dim}])"
         )
         self._conn.commit()
+
+    def add(self, id: str, embedding: list[float]) -> None:
+        vec = np.array(embedding, dtype=np.float32).tobytes()
+        self._conn.execute(
+            "INSERT OR REPLACE INTO vec_nodes(rowid, embedding) VALUES (?, ?)",
+            (id, vec),
+        )
+        self._conn.commit()
